@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Clinic Management System</title>
+    <style>
+        /* Original receipt styles */
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+
+        .receipt {
+            border: 1px solid #ccc;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #333;
+        }
+
+        .clinic-name {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #ff0000;
+        }
+
+        .receipt-number {
+            margin: 10px 0;
+            font-weight: bold;
+        }
+
+        .info-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: inline-block;
+            width: 100px;
+            font-weight: bold;
+        }
+
+        input, select {
+            padding: 8px;
+            width: 200px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .service-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .service-row select {
+            flex: 2;
+        }
+
+        .service-row .amount {
+            flex: 1;
+            font-weight: bold;
+        }
+
+        button {
+            background-color: #ff4444;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+
+        button:hover {
+            background-color: #cc0000;
+        }
+
+        .total {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #333;
+            text-align: right;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .remove-btn {
+            background-color: #ff4444;
+        }
+
+        .remove-btn:hover {
+            background-color: #cc0000;
+        }
+
+        .reset-btn {
+            background-color: #f44336;
+        }
+
+        .reset-btn:hover {
+            background-color: #da190b;
+        }
+
+        /* New styles for navigation and records */
+        .nav-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .nav-tab {
+            padding: 10px 20px;
+            background-color: #f0f0f0;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .nav-tab.active {
+            background-color: #ff4444;
+            color: white;
+        }
+
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        .records-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .records-table th, .records-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        .records-table th {
+            background-color: #f4f4f4;
+        }
+
+        .records-filter {
+            margin-bottom: 20px;
+        }
+
+        .records-filter input {
+            padding: 8px;
+            margin-right: 10px;
+        }
+
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            
+            .receipt {
+                border: none;
+                box-shadow: none;
+            }
+
+            body {
+                padding: 0;
+                margin: 0;
+            }
+
+            input, select {
+                border: none;
+                pointer-events: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="nav-tabs no-print">
+        <button class="nav-tab active" onclick="showPage('receipt')">Receipt</button>
+        <button class="nav-tab" onclick="showPage('records')">Records</button>
+    </div>
+
+    <div id="receiptPage" class="page active">
+        <div class="receipt" id="receipt">
+            <div class="header">
+                <div class="clinic-name">XYZ FAMILY CLINIC</div>
+                <div class="receipt-number">Receipt #: <span id="receiptNumber"></span></div>
+            </div>
+
+            <div class="info-group">
+                <div>
+                    <label>Patient Name:</label>
+                    <input type="text" id="patientName">
+                </div>
+                <div>
+                    <label>Gender:</label>
+                    <select id="gender">
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Date:</label>
+                    <input type="text" id="date" readonly>
+                </div>
+            </div>
+
+            <div id="services">
+                <!-- Service rows will be added here -->
+            </div>
+
+            <button onclick="addService()" class="no-print">Add Service</button>
+            <button onclick="printReceipt()" class="no-print">Print Receipt</button>
+            <button onclick="confirmResetCounter()" class="no-print reset-btn">Reset Counter</button>
+
+            <div class="total">
+                Total Amount: Rs. <span id="totalAmount">0.00</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="recordsPage" class="page">
+        <div class="records-container">
+            <h2>Records</h2>
+            <div class="records-filter">
+                <input type="date" id="startDate" onchange="filterRecords()">
+                <input type="date" id="endDate" onchange="filterRecords()">
+                <button onclick="filterRecords()">Filter</button>
+                <button onclick="exportFilteredData()" style="background-color: #4CAF50;">Export Filtered Data</button>
+                <button onclick="confirmClearFilteredData()" style="background-color: #f44336;">Clear Data</button>
+            </div>
+            <div id="recordsTableContainer"></div>
+            <div class="total">
+                Total Sum: Rs. <span id="totalSum">0.00</span>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.16.9/xlsx.full.min.js"></script>
+    <script>
+        // Original services object
+        const services = {
+            'OPD': 1000,
+            'ER_OPD': 1500,
+            'Service_Charges_1': 300,
+            'Service_Charges_2': 500,
+            'BP_OSP': 50,
+            'RBS_OSP_1': 150,
+            'BP_RBS_OSP': 200,
+            'RBS_OSP_2': 100,
+            'Ear_Suction_1': 600,
+            'Ear_Suction_2': 1200,
+            'IM_INJ_OSP': 150,
+            'IV_INJ_OSP': 300,
+            'Home_Visit': 4500,
+            'Home_Visit+Charges': 7000,
+            'Other_Charges_1': 500,
+            'Other_Charges_2': 1000,
+            'Other_Charges_3': 1500,
+            'Other_Charges_4': 2000,
+            'Other_Charges_5': 2500,
+            'Other_Charges_6': 3000,
+            'Other_Charges_7': 3500,
+            'Other_Charges_8': 4000,
+            'Dressing_A': 300,
+            'Dressing_B': 500,
+            'Dressing_C': 600,
+        };
+
+        // Original functions
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeReceipt();
+        });
+
+        
+        function initializeReceipt() {
+            const receiptNum = generateReceiptNumber();
+            document.getElementById('receiptNumber').textContent = receiptNum;
+            setCurrentDate();
+            addService();
+        }
+
+        function setCurrentDate() {
+            const now = new Date();
+            const formattedDate = now.toLocaleDateString('en-GB', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            });
+            document.getElementById('date').value = formattedDate;
+        }
+
+        function generateReceiptNumber() {
+            const date = new Date();
+            const dateStr = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`;
+            
+            let lastNum = localStorage.getItem('lastReceiptNumber') || `${dateStr}-000`;
+            let [lastDate, counter] = lastNum.split('-');
+            
+            if (lastDate !== dateStr) {
+                counter = '000';
+            }
+            
+            const newCounter = String(parseInt(counter) + 1).padStart(3, '0');
+            const newReceiptNum = `${dateStr}-${newCounter}`;
+            
+            localStorage.setItem('lastReceiptNumber', newReceiptNum);
+            return newReceiptNum;
+        }
+
+        function showPage(pageId) {
+            if (pageId === 'records') {
+                const password = prompt('Enter password to access records:');
+                if (password !== 'xyz001') {
+                    alert('Incorrect password');
+                    return;
+                }
+            }
+
+            const pages = document.querySelectorAll('.page');
+            const tabs = document.querySelectorAll('.nav-tab');
+            
+            pages.forEach(page => page.classList.remove('active'));
+            tabs.forEach(tab => tab.classList.remove('active'));
+            
+            document.getElementById(`${pageId}Page`).classList.add('active');
+            event.target.classList.add('active');
+            
+            if (pageId === 'records') {
+                displayRecords();
+            }
+        }
+
+        function createServiceRow() {
+            const div = document.createElement('div');
+            div.className = 'service-row';
+            
+            const select = document.createElement('select');
+            select.innerHTML = `
+                <option value="">Select Service</option>
+                <option value="OPD">OPD</option>
+                <option value="ER_OPD">ER OPD</option>
+                <option value="Service_Charges_1">Service Charges 1</option>
+                <option value="Service_Charges_2">Service Charges 2</option>
+                <option value="BP_OSP">BP OSP</option>
+                <option value="RBS_OSP_1">RBS OSP 1</option>
+                <option value="RBS_OSP_2">RBS OSP 2</option>
+                <option value="BP_RBS_OSP">BP+RBS OSP</option>
+                <option value="Ear_Suction_1">Ear Suction 1</option>
+                <option value="Ear_Suction_2">Ear Suction 2</option>
+                <option value="IM_INJ_OSP">IM INJ OSP</option>
+                <option value="IV_INJ_OSP">IV INJ OSP</option>
+                <option value="Home_Visit">Home Visit</option>
+                <option value="Home_Visit+Charges">Home Visit + Charges</option>
+                <option value="Other_Charges_1">Other Charges 1</option>
+                <option value="Other_Charges_2">Other Charges 2</option>
+                <option value="Other_Charges_3">Other Charges 3</option>
+                <option value="Other_Charges_4">Other Charges 4</option>
+                <option value="Other_Charges_5">Other Charges 5</option>
+                <option value="Other_Charges_6">Other Charges 6</option>
+                <option value="Other_Charges_7">Other Charges 7</option>
+                <option value="Other_Charges_8">Other Charges 8</option>
+                <option value="Dressing_A">Dressing A</option>
+                <option value="Dressing_B">Dressing B</option>
+                <option value="Dressing_C">Dressing C</option>
+            `;
+            select.onchange = calculateTotal;
+
+            const amount = document.createElement('div');
+            amount.className = 'amount';
+            amount.textContent = 'Rs. 0.00';
+
+            const removeBtn = document.createElement('button');
+            removeBtn.textContent = 'Remove';
+            removeBtn.className = 'remove-btn no-print';
+            removeBtn.onclick = function() {
+                div.remove();
+                calculateTotal();
+            };
+
+            div.appendChild(select);
+            div.appendChild(amount);
+            div.appendChild(removeBtn);
+
+            return div;
+        }
+
+        function addService() {
+            const servicesDiv = document.getElementById('services');
+            servicesDiv.appendChild(createServiceRow());
+        }
+
+        function calculateTotal() {
+            let total = 0;
+            const serviceRows = document.querySelectorAll('.service-row');
+            
+            serviceRows.forEach(row => {
+                const select = row.querySelector('select');
+                const amount = row.querySelector('.amount');
+                const service = select.value;
+                
+                if (service) {
+                    const price = services[service];
+                    total += price;
+                    amount.textContent = `Rs. ${price.toFixed(2)}`;
+                } else {
+                    amount.textContent = 'Rs. 0.00';
+                }
+            });
+
+            document.getElementById('totalAmount').textContent = total.toFixed(2);
+        }
+
+        // New functions for records page
+        function printReceipt() {
+            const patientName = document.getElementById('patientName').value;
+            if (!patientName) {
+                alert('Please enter patient name before printing');
+                return;
+            }
+            
+            saveReceiptData();
+            window.print();
+            
+            // Reset for new receipt
+            document.getElementById('patientName').value = '';
+            document.getElementById('gender').selectedIndex = 0;
+            document.getElementById('services').innerHTML = '';
+            initializeReceipt();
+        }
+
+        function exportToExcel() {
+            try {
+                const data = JSON.parse(localStorage.getItem('receiptData') || '[]');
+                const ws = XLSX.utils.json_to_sheet(data);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Receipts");
+                XLSX.writeFile(wb, `clinic_receipts_${new Date().toLocaleDateString()}.xlsx`);
+            } catch (error) {
+                alert('Error exporting to Excel. Please try again.');
+            }
+        }
+
+        function displayRecords() {
+            try {
+                const records = JSON.parse(localStorage.getItem('receiptData') || '[]');
+                const tableHTML = `
+                    <table class="records-table">
+                        <thead>
+                            <tr>
+                                <th>Receipt #</th>
+                                <th>Date</th>
+                                <th>Patient Name</th>
+                                <th>Services</th>
+                                <th>Total Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${records.map(record => `
+                                <tr>
+                                    <td>${record.receiptNumber}</td>
+                                    <td>${record.date}</td>
+                                    <td>${record.patientName}</td>
+                                    <td>${record.services.map(s => s.service.replace(/_/g, ' ')).join(', ')}</td>
+                                    <td>Rs. ${record.totalAmount.toFixed(2)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+                document.getElementById('recordsTableContainer').innerHTML = tableHTML;
+            } catch (error) {
+                alert('Error loading records. Please try again.');
+            }
+        }
+
+        function saveReceiptData() {
+            const receiptNumber = document.getElementById('receiptNumber').textContent;
+            const patientName = document.getElementById('patientName').value;
+            const gender = document.getElementById('gender').value;
+            const date = document.getElementById('date').value;
+            const totalAmount = parseFloat(document.getElementById('totalAmount').textContent);
+
+            const selectedServices = [];
+            document.querySelectorAll('.service-row select').forEach(select => {
+                if (select.value) {
+                    selectedServices.push({
+                        service: select.value,
+                        amount: services[select.value]
+                    });
+                }
+            });
+
+            const savedData = JSON.parse(localStorage.getItem('receiptData') || '[]');
+            savedData.push({
+                receiptNumber,
+                patientName,
+                gender,
+                date,
+                totalAmount,
+                services: selectedServices
+            });
+            localStorage.setItem('receiptData', JSON.stringify(savedData));
+        }
+
+        function filterRecords() {
+            const startDate = new Date(document.getElementById('startDate').value);
+            const endDate = new Date(document.getElementById('endDate').value);
+            const records = JSON.parse(localStorage.getItem('receiptData') || '[]');
+            
+            const filteredRecords = records.filter(record => {
+                const recordDate = new Date(record.date.split('/').reverse().join('-'));
+                return recordDate >= startDate && recordDate <= endDate;
+            });
+            
+            displayFilteredRecords(filteredRecords);
+        }
+
+        function displayFilteredRecords(records) {
+            let totalSum = 0;
+            const tableHTML = `
+                <table class="records-table">
+                    <thead>
+                        <tr>
+                            <th>Receipt #</th>
+                            <th>Date</th>
+                            <th>Patient Name</th>
+                            <th>Services</th>
+                            <th>Total Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${records.map(record => {
+                            totalSum += record.totalAmount;
+                            return `
+                                <tr>
+                                    <td>${record.receiptNumber}</td>
+                                    <td>${record.date}</td>
+                                    <td>${record.patientName}</td>
+                                    <td>${record.services.map(s => s.service.replace(/_/g, ' ')).join(', ')}</td>
+                                    <td>Rs. ${record.totalAmount.toFixed(2)}</td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            `;
+            document.getElementById('recordsTableContainer').innerHTML = tableHTML;
+            document.getElementById('totalSum').textContent = totalSum.toFixed(2);
+        }
+
+        function exportFilteredData() {
+            const startDate = new Date(document.getElementById('startDate').value);
+            const endDate = new Date(document.getElementById('endDate').value);
+            const records = JSON.parse(localStorage.getItem('receiptData') || '[]');
+            
+            const filteredRecords = records.filter(record => {
+                const recordDate = new Date(record.date.split('/').reverse().join('-'));
+                return recordDate >= startDate && recordDate <= endDate;
+            });
+
+            if (filteredRecords.length === 0) {
+                alert('No records found for the selected date range.');
+                return;
+            }
+
+            const exportData = filteredRecords.map(record => ({
+                'Receipt #': record.receiptNumber,
+                'Date': record.date,
+                'Patient Name': record.patientName,
+                'Services': record.services.map(s => s.service.replace(/_/g, ' ')).join(', '),
+                'Total Amount': `Rs. ${record.totalAmount.toFixed(2)}`
+            }));
+
+            const totalSum = filteredRecords.reduce((sum, record) => sum + record.totalAmount, 0);
+            exportData.push({
+                'Receipt #': '',
+                'Date': '',
+                'Patient Name': '',
+                'Services': 'Total Sum',
+                'Total Amount': `Rs. ${totalSum.toFixed(2)}`
+            });
+
+            try {
+                const ws = XLSX.utils.json_to_sheet(exportData);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Filtered Receipts");
+                XLSX.writeFile(wb, `filtered_clinic_receipts_${new Date().toLocaleDateString()}.xlsx`);
+            } catch (error) {
+                alert('Error exporting filtered data to Excel. Please try again.');
+            }
+        }
+
+        function confirmResetCounter() {
+            if (confirm('Are you sure you want to reset the counter?')) {
+                resetCounter();
+            }
+        }
+
+        function confirmClearFilteredData() {
+            if (confirm('Are you sure you want to clear the filtered data?')) {
+                clearFilteredData();
+            }
+        }
+
+        function resetCounter() {
+            localStorage.removeItem('lastReceiptNumber');
+            alert('Receipt counter has been reset.');
+            initializeReceipt();
+        }
+
+        function clearFilteredData() {
+            const startDate = new Date(document.getElementById('startDate').value);
+            const endDate = new Date(document.getElementById('endDate').value);
+            let records = JSON.parse(localStorage.getItem('receiptData') || '[]');
+            
+            records = records.filter(record => {
+                const recordDate = new Date(record.date.split('/').reverse().join('-'));
+                return !(recordDate >= startDate && recordDate <= endDate);
+            });
+
+            localStorage.setItem('receiptData', JSON.stringify(records));
+            document.getElementById('startDate').value = '';
+            document.getElementById('endDate').value = '';
+            document.getElementById('recordsTableContainer').innerHTML = '';
+            document.getElementById('totalSum').textContent = '0.00';
+        }
+
+    </script>
+</body>
+</html>
